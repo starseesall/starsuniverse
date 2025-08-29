@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Play Lab — HTML Games</title>
+  <meta name="description" content="A lightweight, mobile-friendly HTML5 game launcher for GitHub Pages." />
+  <style>
+    :root{
+      --bg:#0f1222; --panel:#181c34; --card:#1d2241; --text:#e9ecf6; --muted:#a8b0cf; --accent:#8bc34a; --chip:#212650;
+      --shadow: 0 10px 25px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial,sans-serif; background:linear-gradient(180deg,#0b0e1a,#111530 35%,#0f1222); color:var(--text)}
+
+    header{
+      position:sticky; top:0; z-index:20; backdrop-filter:saturate(130%) blur(8px);
+      background:linear-gradient(180deg, rgba(15,18,34,.9), rgba(24,28,52,.65));
+      border-bottom:1px solid rgba(255,255,255,.06);
+    }
+    .wrap{max-width:1100px; margin-inline:auto; padding:18px 18px}
+    .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+    h1{font-size:clamp(18px,3vw,28px); margin:0; letter-spacing:.3px}
+    .muted{color:var(--muted)}
+
+    .search{flex:1; min-width:220px; display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid rgba(255,255,255,.06); padding:10px 12px; border-radius:14px; box-shadow:var(--shadow)}
+    .search input{all:unset; flex:1; color:var(--text)}
+    .search .btn{cursor:pointer; user-select:none; font-weight:600; padding:8px 12px; border-radius:10px; background:var(--accent); color:#0c0f1e; border:none}
+
+    .chips{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+    .chip{background:var(--chip); color:var(--muted); padding:6px 10px; border-radius:100px; font-size:13px; cursor:pointer; border:1px solid rgba(255,255,255,.06)}
+    .chip.active{outline:2px solid var(--accent); color:var(--text)}
+
+    main{max-width:1100px; margin-inline:auto; padding:18px}
+    .grid{display:grid; grid-template-columns:repeat( auto-fill, minmax(180px,1fr) ); gap:14px}
+    .card{background:var(--card); border:1px solid rgba(255,255,255,.06); border-radius:18px; overflow:hidden; box-shadow:var(--shadow); display:flex; flex-direction:column}
+    .thumb{aspect-ratio:16/10; background:#0b0e1a; display:grid; place-items:center; overflow:hidden}
+    .thumb img{width:100%; height:100%; object-fit:cover; display:block}
+    .title{font-weight:700; padding:10px 12px 2px}
+    .meta{display:flex; gap:8px; align-items:center; padding:0 12px 10px; color:var(--muted); font-size:12px}
+    .card .actions{display:flex; gap:8px; padding:10px 12px 14px; margin-top:auto}
+    .btn{cursor:pointer; user-select:none; background:#2a2f5a; color:var(--text); border:1px solid rgba(255,255,255,.08); padding:8px 10px; border-radius:12px; font-weight:600}
+    .btn.primary{background:var(--accent); color:#0c0f1e; border:none}
+    .btn.icon{padding:8px}
+
+    dialog{border:none; border-radius:16px; padding:0; width:min(100vw - 24px, 1050px); background:var(--panel); color:var(--text); overflow:hidden; box-shadow:var(--shadow)}
+    dialog::backdrop{backdrop-filter:blur(4px); background:rgba(0,0,0,.5)}
+    .modal-hd{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.08)}
+    .modal-hd .title{padding:0}
+    .modal-tools{display:flex; gap:8px}
+    .modal-body{height:70vh; background:#000}
+    iframe{width:100%; height:100%; border:0; display:block; background:#000}
+
+    .footer{max-width:1100px; margin:32px auto; padding:0 18px 40px; color:var(--muted); font-size:13px}
+    .fav{filter:grayscale(1) opacity(.7)}
+    .fav.active{filter:none}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="row">
+        <h1>🎮 Play Lab <span class="muted">· HTML Games</span></h1>
+        <div class="search" role="search">
+          <input id="q" placeholder="Search games or tags…" autocomplete="off" />
+          <button class="btn" id="clearBtn" title="Clear">Clear</button>
+        </div>
+        <button class="btn icon" id="favToggle" title="Show favorites">★</button>
+      </div>
+      <div id="chipBar" class="chips"></div>
+    </div>
+  </header>
+
+  <main>
+    <section id="grid" class="grid" aria-live="polite"></section>
+  </main>
+
+  <dialog id="player">
+    <div class="modal-hd">
+      <div class="title" id="playerTitle">Loading…</div>
+      <div class="modal-tools">
+        <a id="openNew" class="btn" target="_blank" rel="noopener">Open in new tab</a>
+        <button id="fsBtn" class="btn">Fullscreen</button>
+        <button id="closeBtn" class="btn">Close</button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <iframe id="frame" allowfullscreen referrerpolicy="no-referrer"></iframe>
+    </div>
+  </dialog>
+
+  <footer class="footer">
+    <p><strong>How to add games:</strong> upload a folder to <code>/games/your-game/</code> with an <code>index.html</code> (and its assets). Then add an entry to the <code>GAMES</code> array below with <code>src: "./games/your-game/index.html"</code>. External URLs can work too, but many sites block embedding in iframes (CORS/X-Frame-Options).</p>
+    <p>Only host games you have rights to share (open‑source, your own, or with permission).</p>
+  </footer>
+
+  <script>
+  // --- 1) Your library of games. Edit this! ---------------------------------
+  // thumb: optional image path in your repo. 320x200 works great.
+  const GAMES = [
+    {
+      title: "Hextris",
+      src: "./games/hextris/index.html", // example local game
+      tags: ["puzzle","arcade"],
+      thumb: "./games/hextris/thumb.jpg"
+    },
+    {
+      title: "2048",
+      src: "./games/2048/index.html",
+      tags: ["puzzle","numbers"],
+      thumb: "./games/2048/thumb.jpg"
+    },
+    {
+      title: "Dino Runner",
+      src: "./games/dino/index.html",
+      tags: ["runner","offline"],
+      thumb: "./games/dino/thumb.jpg"
+    },
+    // External example (may not embed if site blocks iframes)
+    // { title: "Example External", src: "https://example.com/game/index.html", tags:["external"], thumb:"./images/example.jpg" }
+  ];
+
+  // --- 2) UI state -----------------------------------------------------------
+  const $q = document.getElementById('q');
+  const $grid = document.getElementById('grid');
+  const $chipBar = document.getElementById('chipBar');
+  const $player = document.getElementById('player');
+  const $frame = document.getElementById('frame');
+  const $playerTitle = document.getElementById('playerTitle');
+  const $fsBtn = document.getElementById('fsBtn');
+  const $closeBtn = document.getElementById('closeBtn');
+  const $openNew = document.getElementById('openNew');
+  const $clearBtn = document.getElementById('clearBtn');
+  const $favToggle = document.getElementById('favToggle');
+
+  const state = {
+    query: new URLSearchParams(location.search).get('q') || '',
+    tag: new URLSearchParams(location.search).get('tag') || '',
+    showFavs: false,
+    favs: new Set(JSON.parse(localStorage.getItem('favs')||'[]'))
+  };
+  $q.value = state.query;
+
+  // --- 3) Helpers ------------------------------------------------------------
+  const slug = s => s.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+  const updateURL = () => {
+    const p = new URLSearchParams();
+    if(state.query) p.set('q', state.query);
+    if(state.tag) p.set('tag', state.tag);
+    history.replaceState({}, '', p.toString() ? `?${p.toString()}` : location.pathname);
+  }
+  const setFav = (title, on) => {
+    on ? state.favs.add(title) : state.favs.delete(title);
+    localStorage.setItem('favs', JSON.stringify([...state.favs]));
+    render();
+  }
+
+  // --- 4) Render chips -------------------------------------------------------
+  const allTags = [...new Set(GAMES.flatMap(g=>g.tags||[]))].sort();
+  function renderChips(){
+    $chipBar.innerHTML='';
+    const all = document.createElement('span');
+    all.className = 'chip' + (state.tag===''?' active':'');
+    all.textContent = 'All';
+    all.onclick = ()=>{ state.tag=''; render(); };
+    $chipBar.appendChild(all);
+
+    allTags.forEach(t=>{
+      const el = document.createElement('span');
+      el.className = 'chip' + (state.tag===t?' active':'');
+      el.textContent = `#${t}`;
+      el.onclick = ()=>{ state.tag = (state.tag===t ? '' : t); render(); };
+      $chipBar.appendChild(el);
+    });
+  }
+
+  // --- 5) Render grid --------------------------------------------------------
+  function render(){
+    updateURL();
+    renderChips();
+
+    const q = state.query.trim().toLowerCase();
+    let list = GAMES.filter(g=>
+      (!q || g.title.toLowerCase().includes(q) || (g.tags||[]).some(t=>t.includes(q))) &&
+      (!state.tag || (g.tags||[]).includes(state.tag))
+    );
+
+    if(state.showFavs) list = list.filter(g=> state.favs.has(g.title));
+
+    $favToggle.classList.toggle('active', state.showFavs);
+    $grid.innerHTML = '';
+
+    if(list.length===0){
+      const empty = document.createElement('div');
+      empty.style.gridColumn = '1 / -1';
+      empty.className = 'card';
+      empty.innerHTML = `<div class="title" style="padding:16px">No games match your filters.</div>`;
+      $grid.appendChild(empty);
+      return;
+    }
+
+    list.forEach(g=>{
+      const card = document.createElement('article');
+      card.className='card';
+      const id = slug(g.title);
+      const fav = state.favs.has(g.title);
+      card.innerHTML = `
+        <div class="thumb">${g.thumb?`<img src="${g.thumb}" alt="${g.title} cover">`:`<span class="muted">No image</span>`}</div>
+        <div class="title">${g.title}</div>
+        <div class="meta">${(g.tags||[]).map(t=>`#${t}`).join(' · ')}</div>
+        <div class="actions">
+          <button class="btn primary" data-play="${id}">Play</button>
+          <button class="btn" data-open="${id}">New tab</button>
+          <button class="btn icon fav ${fav?'active':''}" title="Favorite" data-fav="${id}">★</button>
+        </div>`;
+
+      card.querySelector('[data-play]')?.addEventListener('click',()=>openPlayer(g));
+      card.querySelector('[data-open]')?.addEventListener('click',()=>window.open(g.src,'_blank','noopener'));
+      card.querySelector('[data-fav]')?.addEventListener('click',()=>setFav(g.title, !state.favs.has(g.title)));
+
+      $grid.appendChild(card);
+    });
+  }
+
+  // --- 6) Player modal -------------------------------------------------------
+  function openPlayer(game){
+    $playerTitle.textContent = game.title;
+    $frame.src = game.src;
+    $openNew.href = game.src;
+    if(!$player.open) $player.showModal();
+  }
+
+  $fsBtn.addEventListener('click',()=>{
+    if($frame.requestFullscreen) $frame.requestFullscreen();
+  });
+  $closeBtn.addEventListener('click',()=>{$frame.src='about:blank'; $player.close();});
+
+  // --- 7) Events -------------------------------------------------------------
+  $q.addEventListener('input', ()=>{ state.query = $q.value; render(); });
+  $clearBtn.addEventListener('click', ()=>{ $q.value=''; state.query=''; render(); });
+  $favToggle.addEventListener('click', ()=>{ state.showFavs = !state.showFavs; render(); });
+
+  // --- 8) Init ---------------------------------------------------------------
+  render();
+  </script>
+</body>
+</html>
